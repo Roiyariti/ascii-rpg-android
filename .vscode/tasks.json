@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Rust: compilar Linux", "type": "process", "command": "cargo", "args": ["build", "--workspace", "--locked"], "problemMatcher": ["$rustc"], "group": { "kind": "build", "isDefault": true } },
+    { "label": "Rust: pruebas", "type": "process", "command": "cargo", "args": ["test", "--workspace", "--locked"], "problemMatcher": ["$rustc"], "group": { "kind": "test", "isDefault": true } },
+    { "label": "Rust: formato", "type": "process", "command": "cargo", "args": ["fmt", "--all"], "problemMatcher": [] },
+    { "label": "Rust: clippy", "type": "process", "command": "cargo", "args": ["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "problemMatcher": ["$rustc"] }
+  ]
+}

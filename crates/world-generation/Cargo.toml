@@ -1,0 +1,9 @@
+[package]
+name = "world-generation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+noise.workspace = true

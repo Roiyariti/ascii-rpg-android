@@ -1,0 +1,12 @@
+[package]
+name = "game-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+glam.workspace = true
+serde.workspace = true
+turn-system.workspace = true
+world-generation.workspace = true
