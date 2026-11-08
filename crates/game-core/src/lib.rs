@@ -1,4 +1,6 @@
 //! Estado lógico y proyección elevada 2.5D. Sin dependencias de ventana o GPU.
+mod camera;
+pub use camera::IsoCamera;
 use glam::{IVec2, Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 use turn_system::{Action, TurnClock};
@@ -49,12 +51,11 @@ impl GameState {
     }
 }
 
-/// x/y definen el suelo; z es la elevación. La salida se expresa en píxeles.
+/// Proyección relativa con la configuración base. Para seguimiento y zoom usar IsoCamera.
 pub fn project(position: Vec3) -> Vec2 {
-    Vec2::new(
-        (position.x - position.y) * 22.0,
-        (position.x + position.y) * 11.0 - position.z * 10.0,
-    )
+    let mut camera = IsoCamera::new(Vec2::ZERO);
+    camera.zoom = 1.0;
+    camera.project_vector(position).truncate()
 }
 
 #[cfg(test)]
