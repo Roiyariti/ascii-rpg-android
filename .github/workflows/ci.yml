@@ -31,6 +31,13 @@ jobs:
           done
           test -f "$VK_ICD_FILENAMES"
           cargo run --locked -p ascii-renderer --example gpu-smoke
+          cargo run --locked -p glyph-demo --example world-snapshot -- .artifacts/world-a-42.ppm 42
+          cargo run --locked -p glyph-demo --example world-snapshot -- .artifacts/world-a-73.ppm 73
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ascii-world-a-captures
+          path: .artifacts/world-a-*.ppm
+          retention-days: 7
   android:
     runs-on: ubuntu-24.04
     steps:

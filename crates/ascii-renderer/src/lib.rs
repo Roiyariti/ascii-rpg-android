@@ -3,6 +3,7 @@ use bytemuck::{Pod, Zeroable};
 use game_assets::{ATLAS_HEIGHT, ATLAS_WIDTH, CELL, atlas, glyph_index};
 
 pub const MAX_GLYPHS: usize = 16_384;
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth16Unorm;
 pub const CLEAR: wgpu::Color = wgpu::Color {
     r: 0.008,
     g: 0.012,
@@ -13,7 +14,9 @@ pub const CLEAR: wgpu::Color = wgpu::Color {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Glyph {
-    rect: [f32; 4],
+    origin: [f32; 4],
+    axis_u: [f32; 4],
+    axis_v: [f32; 4],
     uv: [f32; 4],
     color: [f32; 4],
 }
@@ -26,13 +29,44 @@ impl Glyph {
         viewport: [f32; 2],
         color: [f32; 4],
     ) -> Self {
+        Self::quad(
+            character,
+            [position[0], position[1], 0.0],
+            [size[0], 0.0, 0.0],
+            [0.0, size[1], 0.0],
+            viewport,
+            color,
+        )
+    }
+
+    /// Paralelogramo proyectado con profundidad interpolada por vértice.
+    pub fn quad(
+        character: char,
+        origin: [f32; 3],
+        axis_u: [f32; 3],
+        axis_v: [f32; 3],
+        viewport: [f32; 2],
+        color: [f32; 4],
+    ) -> Self {
         let index = glyph_index(character);
         Self {
-            rect: [
-                position[0] / viewport[0] * 2.0 - 1.0,
-                1.0 - position[1] / viewport[1] * 2.0,
-                size[0] / viewport[0] * 2.0,
-                -size[1] / viewport[1] * 2.0,
+            origin: [
+                origin[0] / viewport[0] * 2.0 - 1.0,
+                1.0 - origin[1] / viewport[1] * 2.0,
+                origin[2],
+                0.0,
+            ],
+            axis_u: [
+                axis_u[0] / viewport[0] * 2.0,
+                -axis_u[1] / viewport[1] * 2.0,
+                axis_u[2],
+                0.0,
+            ],
+            axis_v: [
+                axis_v[0] / viewport[0] * 2.0,
+                -axis_v[1] / viewport[1] * 2.0,
+                axis_v[2],
+                0.0,
             ],
             uv: [
                 (index % 16 * CELL) as f32 / ATLAS_WIDTH as f32,
@@ -43,6 +77,34 @@ impl Glyph {
             color,
         }
     }
+
+    pub fn with_depth(mut self, depth: f32) -> Self {
+        self.origin[2] = depth;
+        self
+    }
+
+    /// Suelo opaco entre trazos: evita ver entidades a través de los espacios ASCII.
+    pub fn with_background(mut self, shade: f32) -> Self {
+        self.origin[3] = shade.clamp(0.0, 1.0);
+        self
+    }
+}
+
+pub fn depth_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("Profundidad ASCII 16 bits"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: DEPTH_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    })
 }
 
 pub struct GlyphRenderer {
@@ -88,10 +150,14 @@ impl GlyphRenderer {
                 module: &shader, entry_point: Some("vs_main"), compilation_options: Default::default(),
                 buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: size_of::<Glyph>() as u64, step_mode: wgpu::VertexStepMode::Instance,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4],
                 })],
             },
-            primitive: wgpu::PrimitiveState::default(), depth_stencil: None,
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT, depth_write_enabled: Some(true), depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                stencil: Default::default(), bias: Default::default(),
+            }),
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shader, entry_point: Some("fs_main"), compilation_options: Default::default(),
@@ -137,6 +203,7 @@ impl GlyphRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         view: &wgpu::TextureView,
+        depth: &wgpu::TextureView,
         glyphs: &[Glyph],
     ) -> Result<(), &'static str> {
         if glyphs.len() > MAX_GLYPHS {
@@ -156,7 +223,14 @@ impl GlyphRenderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,

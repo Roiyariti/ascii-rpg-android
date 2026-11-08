@@ -1,6 +1,6 @@
-mod scene;
+pub mod scene;
 
-use ascii_renderer::{Glyph, GlyphRenderer};
+use ascii_renderer::{Glyph, GlyphRenderer, depth_texture};
 use game_core::GameState;
 use glam::Vec2;
 use std::{
@@ -10,7 +10,7 @@ use std::{
 use turn_system::Action;
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, MouseButton, TouchPhase, WindowEvent},
+    event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
@@ -25,6 +25,7 @@ struct Gpu {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     renderer: GlyphRenderer,
+    depth: wgpu::Texture,
     drawable: bool,
 }
 
@@ -63,6 +64,7 @@ impl Gpu {
         config.present_mode = wgpu::PresentMode::Fifo;
         surface.configure(&device, &config);
         let renderer = GlyphRenderer::new(&device, &queue, config.format);
+        let depth = depth_texture(&device, config.width, config.height);
         Ok(Self {
             instance,
             surface,
@@ -70,6 +72,7 @@ impl Gpu {
             queue,
             config,
             renderer,
+            depth,
             drawable: size.width > 0 && size.height > 0,
         })
     }
@@ -82,6 +85,7 @@ impl Gpu {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
+        self.depth = depth_texture(&self.device, width, height);
     }
 
     fn draw(&mut self, window: Arc<Window>, glyphs: &[Glyph]) -> AppResult<bool> {
@@ -108,8 +112,13 @@ impl Gpu {
             }
         };
         let view = frame.texture.create_view(&Default::default());
-        self.renderer
-            .render(&self.device, &self.queue, &view, glyphs)?;
+        self.renderer.render(
+            &self.device,
+            &self.queue,
+            &view,
+            &self.depth.create_view(&Default::default()),
+            glyphs,
+        )?;
         window.pre_present_notify();
         self.queue.present(frame);
         if suboptimal {
@@ -124,10 +133,17 @@ struct App {
     gpu: Option<Gpu>,
     window: Option<Arc<Window>>,
     state: GameState,
+    scene: scene::Scene,
     glyphs: Vec<Glyph>,
     start: Instant,
     next_frame: Instant,
     cursor: Vec2,
+    panning: bool,
+    last_frame: Instant,
+    sample_start: Instant,
+    sample_frames: u32,
+    cpu_total: f32,
+    cpu_max: f32,
     frames: u32,
     smoke_frames: Option<u32>,
     error: Option<String>,
@@ -140,14 +156,29 @@ impl App {
             .ok()
             .map(|value| value.parse())
             .transpose()?;
+        let mut state = GameState::default();
+        if let Ok(seed) = std::env::var("ASCII_RPG_SEED") {
+            state.seed = seed.parse()?;
+        }
+        let mut scene = scene::Scene::new(&state);
+        if let Ok(zoom) = std::env::var("ASCII_RPG_ZOOM") {
+            scene.camera.zoom = zoom.parse::<f32>()?.clamp(0.85, 2.0);
+        }
         Ok(Self {
             gpu: None,
             window: None,
-            state: GameState::default(),
-            glyphs: Vec::with_capacity(4096),
+            state,
+            scene,
+            glyphs: Vec::with_capacity(ascii_renderer::MAX_GLYPHS),
             start: now,
             next_frame: now,
             cursor: Vec2::ZERO,
+            panning: false,
+            last_frame: now,
+            sample_start: now,
+            sample_frames: 0,
+            cpu_total: 0.0,
+            cpu_max: 0.0,
             frames: 0,
             smoke_frames,
             error: None,
@@ -165,10 +196,21 @@ impl App {
             if size.width == 0 || size.height == 0 {
                 return;
             }
-            let canvas = point / Vec2::new(size.width as f32, size.height as f32)
-                * Vec2::from_array(scene::CANVAS);
-            if let Some(action) = scene::action_at(canvas) {
-                self.state.apply(action);
+            let viewport = scene::viewport(size.width, size.height);
+            let canvas = point * (viewport.y / size.height as f32);
+            if let Some(control) = scene::control_at(canvas, viewport, self.scene.debug) {
+                match control {
+                    scene::Control::Action(action) => {
+                        self.state.apply(action);
+                    }
+                    scene::Control::Zoom(factor) => self.scene.zoom(factor),
+                    scene::Control::Center => {
+                        self.scene.camera.pan = Vec2::ZERO;
+                        self.scene.camera.zoom = 1.25;
+                    }
+                    scene::Control::Debug => self.scene.debug = !self.scene.debug,
+                    scene::Control::Seed => self.state.seed = self.state.seed.wrapping_add(1),
+                }
             }
         }
     }
@@ -195,6 +237,8 @@ impl ApplicationHandler for App {
                 self.gpu = Some(gpu);
                 self.window = Some(window.clone());
                 self.next_frame = Instant::now();
+                self.last_frame = self.next_frame;
+                self.sample_start = self.next_frame;
                 window.request_redraw();
             }
             Err(error) => self.fail(event_loop, error),
@@ -204,6 +248,7 @@ impl ApplicationHandler for App {
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
         self.gpu = None;
         self.window = None;
+        self.panning = false;
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
@@ -221,6 +266,38 @@ impl ApplicationHandler for App {
                 if event.state == ElementState::Pressed && !event.repeat =>
             {
                 let action = match event.physical_key {
+                    PhysicalKey::Code(KeyCode::Equal | KeyCode::NumpadAdd) => {
+                        self.scene.zoom(1.15);
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::Minus | KeyCode::NumpadSubtract) => {
+                        self.scene.zoom(1.0 / 1.15);
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::Home) => {
+                        self.scene.camera.pan = Vec2::ZERO;
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::Tab) => {
+                        self.scene.debug = !self.scene.debug;
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::KeyI) => {
+                        self.scene.camera.pan.y = (self.scene.camera.pan.y + 24.0).min(160.0);
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::KeyK) => {
+                        self.scene.camera.pan.y = (self.scene.camera.pan.y - 24.0).max(-160.0);
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::KeyJ) => {
+                        self.scene.camera.pan.x = (self.scene.camera.pan.x + 24.0).min(160.0);
+                        None
+                    }
+                    PhysicalKey::Code(KeyCode::KeyL) => {
+                        self.scene.camera.pan.x = (self.scene.camera.pan.x - 24.0).max(-160.0);
+                        None
+                    }
                     PhysicalKey::Code(KeyCode::Escape) => {
                         event_loop.exit();
                         None
@@ -248,8 +325,26 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.cursor = Vec2::new(position.x as f32, position.y as f32)
+                let next = Vec2::new(position.x as f32, position.y as f32);
+                if self.panning {
+                    let scale = 600.0 / window.inner_size().height.max(1) as f32;
+                    self.scene.camera.pan = (self.scene.camera.pan + (next - self.cursor) * scale)
+                        .clamp(Vec2::splat(-160.0), Vec2::splat(160.0));
+                }
+                self.cursor = next;
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let steps = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => y,
+                    MouseScrollDelta::PixelDelta(p) => p.y as f32 / 80.0,
+                };
+                self.scene.zoom(1.1_f32.powf(steps.clamp(-10.0, 10.0)));
+            }
+            WindowEvent::MouseInput {
+                state,
+                button: MouseButton::Middle,
+                ..
+            } => self.panning = state == ElementState::Pressed,
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -259,15 +354,45 @@ impl ApplicationHandler for App {
                 self.touch(Vec2::new(touch.location.x as f32, touch.location.y as f32))
             }
             WindowEvent::RedrawRequested => {
-                scene::build(
+                let frame_start = Instant::now();
+                let dt = frame_start.duration_since(self.last_frame).as_secs_f32();
+                self.last_frame = frame_start;
+                let size = window.inner_size();
+                self.scene.build(
                     &mut self.glyphs,
                     &self.state,
                     self.start.elapsed().as_secs_f32(),
+                    dt.min(0.25),
+                    scene::viewport(size.width, size.height),
                 );
                 if let Some(gpu) = &mut self.gpu {
                     match gpu.draw(window, &self.glyphs) {
                         Ok(true) => {
                             self.frames += 1;
+                            self.sample_frames += 1;
+                            self.cpu_total += self.scene.stats.cpu_ms;
+                            self.cpu_max = self.cpu_max.max(self.scene.stats.cpu_ms);
+                            if self.sample_frames >= 300
+                                || self.smoke_frames.is_some_and(|limit| self.frames >= limit)
+                            {
+                                eprintln!(
+                                    "Terreno: {:.1} FPS; CPU escena media {:.2}ms max {:.2}ms; {} glifos; {} celdas; {} chunks; {} KiB cache; {} bytes/glifo; Z16 {} KiB",
+                                    self.sample_frames as f32
+                                        / self.sample_start.elapsed().as_secs_f32(),
+                                    self.cpu_total / self.sample_frames as f32,
+                                    self.cpu_max,
+                                    self.glyphs.len(),
+                                    self.scene.stats.tiles,
+                                    self.scene.stats.chunks,
+                                    self.scene.stats.cache_bytes / 1024,
+                                    size_of::<Glyph>(),
+                                    u64::from(size.width) * u64::from(size.height) * 2 / 1024
+                                );
+                                self.sample_frames = 0;
+                                self.cpu_total = 0.0;
+                                self.cpu_max = 0.0;
+                                self.sample_start = Instant::now();
+                            }
                             if self.smoke_frames.is_some_and(|limit| self.frames >= limit) {
                                 eprintln!(
                                     "Demo: {} frames presentados; {} glifos/frame",
@@ -284,7 +409,7 @@ impl ApplicationHandler for App {
                         }
                     }
                 }
-                self.next_frame = Instant::now() + Duration::from_micros(16_667);
+                self.next_frame = frame_start + Duration::from_micros(16_667);
             }
             _ => {}
         }

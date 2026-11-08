@@ -6,6 +6,8 @@
     { "label": "Rust: formato", "type": "process", "command": "cargo", "args": ["fmt", "--all"], "problemMatcher": [] },
     { "label": "Rust: clippy", "type": "process", "command": "cargo", "args": ["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "problemMatcher": ["$rustc"] },
     { "label": "Demo: ejecutar Linux", "type": "process", "command": "cargo", "args": ["run", "--locked", "-p", "glyph-demo", "--bin", "glyph-demo"], "problemMatcher": ["$rustc"] },
+    { "label": "Terreno: montañas en PC", "type": "process", "command": "cargo", "args": ["run", "--locked", "-p", "glyph-demo", "--bin", "glyph-demo"], "options": { "env": { "ASCII_RPG_SEED": "73" } }, "problemMatcher": ["$rustc"] },
+    { "label": "Terreno: captura GPU", "type": "process", "command": "cargo", "args": ["run", "--locked", "-p", "glyph-demo", "--example", "world-snapshot", "--", ".artifacts/world-a.ppm", "73"], "problemMatcher": ["$rustc"] },
     { "label": "Demo: prueba GPU", "type": "process", "command": "cargo", "args": ["run", "--locked", "-p", "ascii-renderer", "--example", "gpu-smoke"], "problemMatcher": ["$rustc"] },
     { "label": "Android: biblioteca ARM64", "type": "process", "command": "sh", "args": ["scripts/build-android.sh", "--library-only"], "problemMatcher": ["$rustc"] },
     { "label": "Android: APK debug", "type": "process", "command": "sh", "args": ["scripts/build-android.sh"], "problemMatcher": ["$rustc"] }

@@ -35,15 +35,18 @@ debug = 2
 
 [profile.dev.package.world-generation]
 debug = 2
+opt-level = 2
 
 [profile.dev.package.game-assets]
 debug = 2
 
 [profile.dev.package.ascii-renderer]
 debug = 2
+opt-level = 1
 
 [profile.dev.package.glyph-demo]
 debug = 2
+opt-level = 1
 
 [profile.release]
 lto = "thin"

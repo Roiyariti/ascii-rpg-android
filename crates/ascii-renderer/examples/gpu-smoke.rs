@@ -1,5 +1,5 @@
 //! Prueba real del shader, atlas y lectura GPU; falla si no hay adaptador.
-use ascii_renderer::{Glyph, GlyphRenderer};
+use ascii_renderer::{Glyph, GlyphRenderer, depth_texture};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     pollster::block_on(run())
@@ -34,17 +34,44 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         view_formats: &[],
     });
     let renderer = GlyphRenderer::new(&device, &queue, wgpu::TextureFormat::Rgba8Unorm);
-    let glyphs = [Glyph::new(
-        'A',
-        [16.0, 16.0],
-        [32.0; 2],
-        [64.0; 2],
-        [1.0, 0.0, 0.0, 1.0],
-    )];
+    let depth = depth_texture(&device, 64, 64);
+    let glyphs = [
+        Glyph::new(
+            'A',
+            [16.0, 16.0],
+            [32.0; 2],
+            [64.0; 2],
+            [1.0, 0.0, 0.0, 1.0],
+        )
+        .with_depth(0.25),
+        // Enviado DESPUÉS del rojo: sin depth test lo taparía y la prueba fallaría.
+        Glyph::new(
+            'A',
+            [16.0, 16.0],
+            [32.0; 2],
+            [64.0; 2],
+            [0.0, 1.0, 0.0, 1.0],
+        )
+        .with_depth(0.75),
+        // Profundidad inclinada y fondo opaco: cruza el plano verde a mitad.
+        Glyph::quad(
+            ' ',
+            [0.0, 0.0, 0.2],
+            [8.0, 0.0, 0.6],
+            [0.0, 8.0, 0.0],
+            [64.0; 2],
+            [0.0, 0.0, 1.0, 1.0],
+        )
+        .with_background(1.0),
+        Glyph::new(' ', [0.0, 0.0], [8.0; 2], [64.0; 2], [0.0, 1.0, 0.0, 1.0])
+            .with_depth(0.5)
+            .with_background(1.0),
+    ];
     renderer.render(
         &device,
         &queue,
         &target.create_view(&Default::default()),
+        &depth.create_view(&Default::default()),
         &glyphs,
     )?;
     let readback = device.create_buffer(&wgpu::BufferDescriptor {
@@ -95,9 +122,30 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         "La A original tiene 16 puntos, ampliados a 4x4 píxeles"
     );
     assert!(
-        data[0] < 10 && data[1] < 10 && data[2] < 10,
+        !data
+            .chunks_exact(4)
+            .enumerate()
+            .any(|(index, p)| index % 64 >= 16 && index / 64 >= 16 && p[1] > 240 && p[0] < 5),
+        "El glifo lejano debe quedar oculto aunque se envíe después"
+    );
+    assert!(
+        data[data.len() - 4..][..3].iter().all(|&v| v < 10),
         "El fondo debe limpiarse"
     );
-    eprintln!("GPU correcta: {red} píxeles de cobertura y límites del glifo verificados");
+    for y in 0..8 {
+        let blue = &data[(y * 64 + 1) * 4..][..4];
+        let green = &data[(y * 64 + 6) * 4..][..4];
+        assert!(
+            blue[2] > 240 && blue[1] < 5,
+            "El fondo opaco debe ocultar el plano lejano"
+        );
+        assert!(
+            green[1] > 240 && green[2] < 5,
+            "La profundidad debe interpolarse por vértice"
+        );
+    }
+    eprintln!(
+        "GPU correcta: {red} píxeles de glifo, profundidad interpolada y oclusión opaca verificados"
+    );
     Ok(())
 }
