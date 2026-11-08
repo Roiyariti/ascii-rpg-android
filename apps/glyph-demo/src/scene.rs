@@ -115,7 +115,7 @@ pub fn build(out: &mut Vec<Glyph>, state: &GameState, time: f32) {
             if height > 0.6 {
                 text(out, ": :", point + Vec2::new(3.0, 7.0), 6.0, DIM);
             }
-            if dx == -5 && dy == 1 {
+            if x == -5 && y == 1 {
                 text(
                     out,
                     "   ^\n  /|\\\n /#|#\\\n/##|##\\\n   |",
@@ -124,7 +124,7 @@ pub fn build(out: &mut Vec<Glyph>, state: &GameState, time: f32) {
                     [0.12, 0.30, 0.22, 1.0],
                 );
             }
-            if dx == 4 && dy == -3 {
+            if x == 4 && y == -3 {
                 text(
                     out,
                     "+-+   +-+\n|#|   |#|\n|#|___|#|\n|#/#.#\\#|\n+-------+",
