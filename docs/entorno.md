@@ -1,5 +1,8 @@
 # Entorno y estado de la primera etapa
 
+Este documento conserva el registro de la primera etapa. La actualización de mundo,
+sus pruebas y sus mediciones se documentan en [Hito A](hito-a.md).
+
 ## Detección
 
 El anfitrión es Debian 13 x86_64. La terminal del agente está dentro del Flatpak de

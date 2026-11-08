@@ -59,10 +59,14 @@ Compilar una APK no prueba la ejecución táctil, la pausa/reanudación ni la co
 del controlador de un teléfono. GitHub Actions conserva la APK debug como artefacto
 temporal de pruebas, sin crear Releases ni versiones estables.
 
-La APK debug se instaló por ADB y se abrió en un teléfono ARM64 con Android 16
+La APK inicial `0.1.0-dev` se instaló por ADB y se abrió en un teléfono ARM64 con Android 16
 (API 36), pantalla de 2400x1080 y GPU Mali-G57 MC2. Se comprobó el renderizado
 Vulkan de la escena y la respuesta del contador de turnos a los controles.
 Esta prueba detectó un límite de textura solicitado de 2048 píxeles que impedía
 crear la superficie. El dispositivo wgpu ahora solicita los límites de resolución
 del adaptador mediante `using_resolution`, conservando los demás límites básicos.
 Siguen pendientes las pruebas de pausa/reanudación, consumo, memoria y páginas de 16 KB.
+
+La actualización del [Hito A](hito-a.md) genera `0.2.0-hito-a` (versionCode 2),
+añade profundidad Z16 y conserva la integración nativa. Primero se revisa en PC;
+su prueba física e instalación en teléfono están pendientes.
