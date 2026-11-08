@@ -20,9 +20,19 @@ El aislamiento adicional de ejecución falla al crear namespaces (`bwrap`). Las 
 locales se realizan mediante el mecanismo de ejecución autorizado disponible.
 Esto no requiere cambiar opciones del kernel ni modificar otros proyectos.
 
-GitHub CLI no tenía una sesión iniciada en la primera comprobación. La creación del
-repositorio remoto y el primer push requieren completar `gh auth login` mediante navegador.
-La fase gráfica espera a esa primera publicación, siguiendo el orden solicitado.
+GitHub CLI no tenía sesión inicialmente. Se completó el acceso mediante navegador y se
+verificó la cuenta personal `Roiyariti`. Se comprobó que el nombre estaba disponible y
+se creó el repositorio público `Roiyariti/ascii-rpg-android`, con primer commit
+`ad0da12cb923a5d2490636eece54518c98c7a4d2`. El hash remoto de `main` coincidió con el local.
+GitHub Actions pasó para ese primer commit antes de avanzar a la fase gráfica.
+
+El wrapper Gradle tuvo un timeout de descarga inicial; se intenta la misma distribución
+oficial con validación SHA-256. No se cambia de versión para eludir verificaciones.
+
+El equipo dispone de aproximadamente 4 GB de RAM. Compilar Linux y Android a la vez
+provocó mucho intercambio de memoria. Se limitaron los jobs de Cargo a uno en
+`.cargo/config.toml`, el heap de Gradle a 1 GB y las verificaciones locales se ejecutan
+por plataforma. CI puede usar dos jobs mediante `CARGO_BUILD_JOBS`.
 
 ## Verificación
 

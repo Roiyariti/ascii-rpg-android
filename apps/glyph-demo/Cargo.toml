@@ -1,0 +1,28 @@
+[package]
+name = "glyph-demo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "ascii_rpg"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "glyph-demo"
+path = "src/main.rs"
+
+[dependencies]
+game-core.workspace = true
+turn-system.workspace = true
+world-generation.workspace = true
+ascii-renderer.workspace = true
+glam.workspace = true
+wgpu.workspace = true
+winit.workspace = true
+pollster.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "=0.15.1"
+log = "=0.4.33"

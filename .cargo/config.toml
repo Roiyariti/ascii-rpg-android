@@ -1,0 +1,3 @@
+[build]
+# Base de desarrollo con 4 GB de RAM. CI puede sobrescribir CARGO_BUILD_JOBS.
+jobs = 1

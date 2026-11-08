@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Depurar demo GPU (Linux)",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--locked", "-p", "glyph-demo", "--bin", "glyph-demo"],
+        "filter": { "name": "glyph-demo", "kind": "bin" }
+      },
+      "cwd": "${workspaceFolder}",
+      "args": []
+    }
+  ]
+}

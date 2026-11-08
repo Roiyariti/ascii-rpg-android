@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/game-core", "crates/turn-system", "crates/world-generation"]
+members = ["crates/*", "apps/glyph-demo"]
 resolver = "3"
 
 [workspace.package]
@@ -15,6 +15,12 @@ noise = "=0.9.0"
 turn-system = { path = "crates/turn-system" }
 world-generation = { path = "crates/world-generation" }
 game-core = { path = "crates/game-core" }
+game-assets = { path = "crates/game-assets" }
+ascii-renderer = { path = "crates/ascii-renderer" }
+wgpu = { version = "=30.0.1", default-features = false, features = ["std", "parking_lot", "vulkan", "gles", "wgsl"] }
+winit = { version = "=0.30.13", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11", "android-native-activity"] }
+bytemuck = { version = "=1.25.2", features = ["derive"] }
+pollster = "=0.4.0"
 
 [profile.dev]
 debug = 1

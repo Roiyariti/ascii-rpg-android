@@ -6,8 +6,8 @@ no se exige usar la versión más reciente de cada herramienta.
 | Componente | Selección | Motivo |
 | --- | --- | --- |
 | Rust / Cargo | 1.95.0, edición 2024 | Toolchain ya disponible, fijado por rustup |
-| wgpu | 30.0.1 (siguiente incremento) | GPU nativa Vulkan/GLES; MSRV documentado 1.87 |
-| winit | 0.30.13 (siguiente incremento) | Ventana y ciclo de vida; raw-window-handle 0.6 |
+| wgpu | 30.0.1 | GPU nativa Vulkan/GLES; MSRV documentado 1.87 |
+| winit | 0.30.13 | Ventana y ciclo de vida; raw-window-handle 0.6 |
 | glam | 0.34.2 | Vectores y proyección; serde habilitado |
 | serde | 1.0.229 | Estado serializable |
 | noise | 0.9.0 | Perlin determinista |
