@@ -24,6 +24,7 @@ Fuentes primarias:
 - [glam](https://docs.rs/glam/0.34.2/glam/), [serde](https://docs.rs/serde/1.0.229/serde/), [noise](https://docs.rs/noise/0.9.0/noise/).
 - [Compatibilidad AGP 8.9](https://developer.android.com/build/releases/agp-8-9-0-release-notes).
 - [Compatibilidad Java/Gradle](https://docs.gradle.org/8.11.1/userguide/compatibility.html).
+- [Perfiles Cargo y símbolos de depuración por paquete](https://doc.rust-lang.org/cargo/reference/profiles.html#overrides).
 - [NDK y otros sistemas de compilación](https://developer.android.com/ndk/guides/other_build_systems).
 
 AGP 9.x está disponible, pero requiere una actualización del conjunto de herramientas.

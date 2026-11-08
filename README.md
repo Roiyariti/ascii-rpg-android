@@ -37,6 +37,8 @@ La ventana usa Vulkan o GLES, no una terminal. Para seleccionar un backend utili
 `F5` inicia la depuración con CodeLLDB. Las tareas de VS Code incluyen pruebas,
 compilación Linux, biblioteca Android ARM64 y APK debug. En terminales nuevas de esta
 carpeta también se incorpora `.tools/bin` al PATH para el GitHub CLI local instalado.
+Los crates del juego conservan símbolos completos para inspeccionar variables; las
+dependencias utilizan símbolos limitados para reducir el consumo durante la compilación.
 
 ## Prueba gráfica y Android
 

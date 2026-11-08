@@ -25,6 +25,26 @@ pollster = "=0.4.0"
 [profile.dev]
 debug = 1
 
+# Símbolos completos en el código propio; dependencias y build scripts conservan
+# sus perfiles ligeros. Añadir aquí futuros crates del workspace que se deban depurar.
+[profile.dev.package.game-core]
+debug = 2
+
+[profile.dev.package.turn-system]
+debug = 2
+
+[profile.dev.package.world-generation]
+debug = 2
+
+[profile.dev.package.game-assets]
+debug = 2
+
+[profile.dev.package.ascii-renderer]
+debug = 2
+
+[profile.dev.package.glyph-demo]
+debug = 2
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
