@@ -37,7 +37,7 @@ Se usan NDK r28c y enlace con `max-page-size=16384`; AGP 8.9.2 alinea las biblio
 nativas sin comprimir. Esto prepara compatibilidad con páginas de 16 KB, que además
 deberá probarse en un dispositivo o emulador adecuado.
 
-## Ciclo de vida y pruebas pendientes
+## Ciclo de vida y pruebas
 
 La ventana/superficie se crean en `resumed` y se liberan en `suspended`. El estado lógico
 permanece en memoria durante esa pausa; aún no hay guardado persistente tras muerte del
@@ -58,3 +58,11 @@ adb logcat -s AsciiRpg
 Compilar una APK no prueba la ejecución táctil, la pausa/reanudación ni la compatibilidad
 del controlador de un teléfono. GitHub Actions conserva la APK debug como artefacto
 temporal de pruebas, sin crear Releases ni versiones estables.
+
+La APK debug se instaló por ADB y se abrió en un teléfono ARM64 con Android 16
+(API 36), pantalla de 2400x1080 y GPU Mali-G57 MC2. Se comprobó el renderizado
+Vulkan de la escena y la respuesta del contador de turnos a los controles.
+Esta prueba detectó un límite de textura solicitado de 2048 píxeles que impedía
+crear la superficie. El dispositivo wgpu ahora solicita los límites de resolución
+del adaptador mediante `using_resolution`, conservando los demás límites básicos.
+Siguen pendientes las pruebas de pausa/reanudación, consumo, memoria y páginas de 16 KB.

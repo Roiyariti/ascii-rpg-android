@@ -48,7 +48,10 @@ impl Gpu {
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("ASCII RPG GPU"),
-                required_limits: wgpu::Limits::downlevel_defaults(),
+                // La superficie puede superar los 2048 px de downlevel_defaults
+                // aunque el atlas sea pequeño; usar la resolución admitida por la GPU.
+                required_limits: wgpu::Limits::downlevel_defaults()
+                    .using_resolution(adapter.limits()),
                 memory_hints: wgpu::MemoryHints::MemoryUsage,
                 ..Default::default()
             })

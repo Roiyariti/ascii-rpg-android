@@ -48,6 +48,11 @@ Linux. Detectó dos supuestos incorrectos del workflow: el paquete SDK retirado 
 en los valores por defecto de setup-android, y el nombre del archivo ICD de Lavapipe.
 Se configura solo `platform-tools` y se descubre el ICD instalado mediante su patrón.
 
+La primera ejecución por ADB detectó que `Limits::downlevel_defaults()` limitaba las
+texturas a 2048 píxeles, insuficientes para la pantalla de 2400x1080 del teléfono.
+Se corrigió la petición del dispositivo con `using_resolution(adapter.limits())`,
+se recompiló la APK y se actualizó la instalación mediante `adb install -r`.
+
 ## Verificación de la demo
 
 - Formato, Clippy con advertencias como errores, seis pruebas y compilación Linux:
@@ -64,14 +69,18 @@ Se configura solo `platform-tools` y se descubre el ICD instalado mediante su pa
 - ARM64: biblioteca gráfica completa compilada y enlazada localmente con NDK r28c;
   primera compilación release con un job: 16 min 55 s. La compilación incremental
   siguiente tardó 1,72 s. Gradle local generó la APK debug con `BUILD SUCCESSFUL`.
-- APK local: `android/app/build/outputs/apk/debug/app-debug.apk`, 5.248.314 bytes,
+- APK local: `android/app/build/outputs/apk/debug/app-debug.apk`, 10.489.982 bytes,
   versión `0.1.0-dev`, API mínima 26, destino 35 y ABI `arm64-v8a`.
 - Firma v2 válida, `zipalign -c -P 16 4` correcto, segmentos ELF LOAD alineados a
   16 KB y una única biblioteca `lib/arm64-v8a/libascii_rpg.so`. Exporta
   `ANativeActivity_onCreate` y `android_main`; solo depende de bibliotecas del sistema
   Android (`liblog`, `libandroid`, `libdl`, `libm` y `libc`).
 - SHA-256 de la APK local verificada:
-  `a831458bf347152f736eff5849223b4da406d9c226ba25210ee45a46850d33a0`.
+  `b6c31255798b7e4477867ac236357f9d0d2f178380e3524cfc67fafe8f606cdb`.
+- Teléfono ARM64 con Android 16 / API 36: instalación por ADB correcta, actividad
+  nativa en primer plano y escena visible a 2400x1080 mediante Vulkan en Mali-G57 MC2.
+  Se observó respuesta de los controles en el contador de turnos. La captura de
+  comprobación permanece local en `.artifacts`, fuera de Git.
 - [CI del código y perfil de depuración](https://github.com/Roiyariti/ascii-rpg-android/actions/runs/42431483610):
   trabajos Linux y Android correctos.
 - Revisión del índice Git: 49 archivos sin patrones detectados de secretos o rutas
@@ -79,6 +88,7 @@ Se configura solo `platform-tools` y se descubre el ICD instalado mediante su pa
 
 ## Pendientes
 
-Probar la APK en un teléfono ARM64: toques, pausa/reanudación, consumo y memoria GPU,
-controladores y páginas de 16 KB. Aún no se han realizado esas pruebas de dispositivo.
+Ampliar las pruebas del teléfono ARM64: pausa/reanudación, consumo, memoria GPU,
+otros controladores y páginas de 16 KB. La instalación, el arranque gráfico y la
+respuesta del contador a los controles ya se comprobaron en un dispositivo real.
 No se publica una Release ni se presenta el prototipo como una versión estable jugable.
