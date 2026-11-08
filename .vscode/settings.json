@@ -3,7 +3,13 @@
   "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" },
   "rust-analyzer.check.command": "clippy",
   "rust-analyzer.cargo.allTargets": true,
-  "files.watcherExclude": { "**/target/**": true, "**/.gradle/**": true },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/.gradle/**": true,
+    "**/.local/**": true,
+    "**/.tools/**": true,
+    "**/.artifacts/**": true
+  },
   "search.exclude": { "**/target": true, "**/.tools": true, "**/.local": true },
   "git.autofetch": true,
   "terminal.integrated.env.linux": { "PATH": "${workspaceFolder}/.tools/bin:${env:PATH}" }
