@@ -34,6 +34,11 @@ provocó mucho intercambio de memoria. Se limitaron los jobs de Cargo a uno en
 `.cargo/config.toml`, el heap de Gradle a 1 GB y las verificaciones locales se ejecutan
 por plataforma. CI puede usar dos jobs mediante `CARGO_BUILD_JOBS`.
 
+La primera comprobación gráfica en CI pasó formato, Clippy, seis pruebas y compilación
+Linux. Detectó dos supuestos incorrectos del workflow: el paquete SDK retirado `tools`
+en los valores por defecto de setup-android, y el nombre del archivo ICD de Lavapipe.
+Se configura solo `platform-tools` y se descubre el ICD instalado mediante su patrón.
+
 ## Verificación
 
 Base verificada localmente:

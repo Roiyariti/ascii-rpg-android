@@ -21,9 +21,16 @@ jobs:
       - name: Comprobar shader y cobertura mediante lectura GPU
         env:
           WGPU_BACKEND: vulkan
-          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
           XDG_RUNTIME_DIR: /tmp
-        run: cargo run --locked -p ascii-renderer --example gpu-smoke
+        run: |
+          for icd in /usr/share/vulkan/icd.d/*lvp*.json; do
+            if [ -f "$icd" ]; then
+              export VK_ICD_FILENAMES="$icd"
+              break
+            fi
+          done
+          test -f "$VK_ICD_FILENAMES"
+          cargo run --locked -p ascii-renderer --example gpu-smoke
   android:
     runs-on: ubuntu-24.04
     steps:
@@ -33,6 +40,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Instalar SDK y NDK fijados
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358'
       - run: rustup show
